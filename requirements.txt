@@ -1,0 +1,11 @@
+# requirements.txt
+# Colab 환경에 맞는 최신 안정 버전의 PyTorch를 자동으로 설치합니다.
+torch
+torchvision
+torchaudio
+# LSF-IDM 논문에서 명시된 Pytorch 버전과 CUDA 버전을 따릅니다.
+transformers
+pandas
+scikit-learn
+tensorboard
+wandb # 실험 결과 추적을 위해 Weights & Biases 사용을 권장합니다.

@@ -192,3 +192,91 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+# ML/DL specific
+# Model checkpoints and weights
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.hdf5
+*.pkl
+*.joblib
+*.safetensors
+checkpoints/
+saved_models/
+model_outputs/
+artifacts/
+
+# Weights & Biases
+wandb/
+runs/
+
+# TensorBoard logs
+tensorboard/
+logs/
+events.out.tfevents.*
+
+# Datasets
+data/
+*.log
+*.csv
+datasets/
+raw_data/
+processed_data/
+
+# Notebooks outputs
+notebooks/
+*.ipynb
+!notebooks/*_template.ipynb
+
+# Training outputs
+results/
+outputs/
+experiments/
+metrics/
+plots/
+figures/
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.pdf
+
+# IDE specific
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Claude Code
+.claude/
+
+# OS specific
+Thumbs.db
+.DS_Store
+.directory
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.cache
+tmp/
+temp/
+
+# Config files with sensitive data
+config.yaml
+config.json
+secrets.json
+*.key
+*.pem
+
+# Virtual environments (additional)
+conda-env/
+.conda/
+Pipfile
+Pipfile.lock
