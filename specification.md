@@ -279,7 +279,7 @@ UGRP/
 
 ### Milestone 2: Phase 3 - 학생 모델 구현 및 지식 증류
 
-- [ ] **Task**: models/student.py에 BiLSTM 아키텍처 구현 (우선순위: High, 예상 소요: 4h)
+- [x] **Task**: models/student.py에 BiLSTM 아키텍처 구현 (우선순위: High, 예상 소요: 4h)
 - [ ] **Task**: scripts/distill.py에 지식 증류 훈련 로직 및 복합 손실 함수 구현 (우선순위: High, 예상 소요: 8h)
 - [ ] **Task**: 초기 하이퍼파라미터(α=0.5, T=2)로 1차 지식 증류 실행 및 성능 측정 (우선순위: High, 예상 소요: 6h)
 - [ ] **Task**: 하이퍼파라미터 튜닝 실험 (α, T 값 변경) (우선순위: Medium, 예상 소요: 12h)
