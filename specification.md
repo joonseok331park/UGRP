@@ -89,7 +89,15 @@
 ## 5. 데이터셋 및 산출물 관리
 
 - **5.1. 데이터셋**:
-    - `data/raw/`: 원본 데이터셋 (CAN-MIRGU, ROAD 등)
+    - `data/raw/`: 원본 데이터셋
+        - **can_mirgu/**: 교사 모델 사전 훈련 및 미세 조정용 (Training)
+            - Benign/: 6일치 정상 주행 데이터 (Day_1 ~ Day_6)
+            - Attack/: 3가지 유형의 공격 데이터 (Masquerade, Real, Suspension)
+        - **ROAD/**: 모델 검증용 (Validation)
+            - ambient/: 정상 주행 시나리오
+            - attacks/: 다양한 공격 시나리오
+        - **can-train-and-test/**: 최종 성능 평가용 (Test)
+            - set_01 ~ set_04: 독립적인 테스트 세트
     - `data/processed/`: 토큰화 및 시퀀싱이 완료된 훈련/검증/테스트용 데이터 파일 (.pkl 또는 .pt 형식)
 
 - **5.2. 산출물 (Artifacts)**:
@@ -99,9 +107,20 @@
 ## 6. 실험 프로토콜 및 평가 지표
 
 - **6.1. 실험 프로토콜**:
-    - **Phase 2**: 교사 모델을 CAN-MIRGU로 훈련하고 ROAD로 검증하여 베이스라인 성능 확립.
-    - **Phase 3**: 확립된 교사 모델을 사용하여 학생 모델 지식 증류 훈련. α와 T를 튜닝하며 최적 조합 탐색.
-    - **Phase 4**: 최종 선정된 학생 모델을 can-train-and-test 데이터셋으로 평가하여 최종 일반화 성능 측정.
+    - **Phase 1**: 데이터 전처리 및 토크나이저 구축
+        - can_mirgu 데이터셋에서 어휘집 생성
+        - 각 데이터셋별 토큰화 및 시퀀싱 처리
+    - **Phase 2**: 교사 모델 사전 훈련 및 미세 조정
+        - 사전 훈련: can_mirgu/Benign 데이터 사용 (MLM 태스크)
+        - 미세 조정: can_mirgu/Attack 데이터 추가 사용 (분류 태스크)
+        - 검증: ROAD 데이터셋으로 베이스라인 성능 확립
+    - **Phase 3**: 학생 모델 지식 증류
+        - 훈련: can_mirgu 데이터로 교사-학생 지식 전달
+        - 검증: ROAD 데이터셋으로 증류 성능 모니터링
+        - 하이퍼파라미터 튜닝: α와 T를 최적화
+    - **Phase 4**: 최종 평가
+        - 테스트: can-train-and-test 데이터셋으로 최종 일반화 성능 측정
+        - 비교 분석: 교사 vs 학생 모델의 성능, 효율성 비교
 
 - **6.2. 핵심 평가 지표**:
     - **성능**: F1-Score, Precision, Recall (특히 Fuzzy 공격 유형에 대해)
@@ -166,6 +185,31 @@ UGRP/
 ├── data/
 │   ├── processed/
 │   └── raw/
+│       ├── can_mirgu/              # 교사 모델 사전 훈련용 (Training)
+│       │   ├── Attack/             # 공격 데이터
+│       │   │   ├── Attacks_metadata.json
+│       │   │   ├── Masquerade_attacks/
+│       │   │   ├── Real_attacks/
+│       │   │   └── Suspension_attacks/
+│       │   └── Benign/             # 정상 주행 데이터 (6일치)
+│       │       ├── Day_1/
+│       │       ├── Day_2/
+│       │       ├── Day_3/
+│       │       ├── Day_4/
+│       │       ├── Day_5/
+│       │       └── Day_6/
+│       ├── ROAD/                   # 교사/학생 모델 검증용 (Validation)
+│       │   ├── ambient/            # 정상 주행 데이터
+│       │   ├── attacks/            # 공격 시나리오 데이터
+│       │   ├── signal_extractions/ # 신호 추출 데이터
+│       │   ├── data_table.csv      # 데이터셋 메타정보
+│       │   └── readme.md           # ROAD 데이터셋 설명서
+│       └── can-train-and-test/     # 최종 모델 테스트용 (Test)
+│           ├── set_01/
+│           ├── set_02/
+│           ├── set_03/
+│           ├── set_04/
+│           └── README.md
 ├── models/
 │   ├── __init__.py
 │   ├── student.py
