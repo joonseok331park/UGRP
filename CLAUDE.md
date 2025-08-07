@@ -301,3 +301,10 @@ Main dependencies from requirements.txt:
 - Integrates external knowledge sources for enhanced problem-solving
 - Provides risk-based execution modes (Silent vs Explicit)
 - Enables seamless transitions between domain experts during task execution
+
+### Git Workflow Memory
+- Implemented a comprehensive Git workflow guide for collaborative development
+- Emphasizes creating feature branches from develop
+- Provides clear guidelines for committing, pushing, and creating pull requests
+- Highlights the importance of clean, descriptive commit messages
+- Includes best practices for branch management and merging
