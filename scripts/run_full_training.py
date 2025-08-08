@@ -11,7 +11,7 @@ from transformers.trainer_utils import set_seed
 # [수정] MLMDataset은 이제 마스킹을 책임지지 않으므로, 더 범용적인 이름의 Dataset 클래스를 사용합니다.
 # ClassificationDataset을 MLM 훈련에도 재사용할 수 있도록 수정합니다.
 from core.tokenizer import CANTokenizer
-from core.dataset import CANClassificationDataset, _load_and_parse_log 
+from core.dataset import ClassificationDataset, _load_and_parse_log 
 from models.teacher import CANBert
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -49,8 +49,8 @@ def main(args):
     logging.info(f"어휘집 로드 완료. 크기: {vocab_size}")
 
     # 데이터셋 준비 (이제 마스킹 로직 없음)
-    # CANClassificationDataset은 라벨을 생성하지만, MLM에서는 사용되지 않음.
-    full_dataset = CANClassificationDataset(
+    # ClassificationDataset은 라벨을 생성하지만, MLM에서는 사용되지 않음.
+    full_dataset = ClassificationDataset(
         file_path=str(processed_data_path),
         tokenizer=tokenizer,
         seq_len=args.seq_len
@@ -91,7 +91,7 @@ def main(args):
         load_best_model_at_end=True,
 
         fp16=torch.cuda.is_available(),
-        dataloader_num_workers=4,
+        dataloader_num_workers=args.num_workers,
         
         seed=args.seed,
     )
@@ -127,6 +127,7 @@ if __name__ == '__main__':
     parser.add_argument("--learning_rate", type=float, default=1e-3)
     parser.add_argument("--warmup_steps", type=int, default=0) # CAN-BERT 논문에는 warmup이 명시되지 않음
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--num_workers", type=int, default=4, help="Number of workers for data loading")
 
     args = parser.parse_args()
     main(args)
