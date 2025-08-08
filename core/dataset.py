@@ -46,71 +46,71 @@ def _load_and_parse_log(file_path: str) -> pd.DataFrame:
     return pd.DataFrame(parsed_data)
 
 
-class MLMDataset(Dataset):
-    """
-    BERT 모델의 MLM 사전 훈련을 위한 데이터셋.
-    CAN-MIRGU 보고서에 명시된 '정상(Benign)' 데이터 파일 처리에 최적화되어 있습니다.
-    """
-    def __init__(self, file_path: str, tokenizer: CANTokenizer, seq_len: int, mask_prob: float = 0.15):
-        self.tokenizer = tokenizer
-        self.seq_len = seq_len
-        self.mask_prob = mask_prob
+# class MLMDataset(Dataset):
+#     """
+#     BERT 모델의 MLM 사전 훈련을 위한 데이터셋.
+#     CAN-MIRGU 보고서에 명시된 '정상(Benign)' 데이터 파일 처리에 최적화되어 있습니다.
+#     """
+#     def __init__(self, file_path: str, tokenizer: CANTokenizer, seq_len: int, mask_prob: float = 0.15):
+#         self.tokenizer = tokenizer
+#         self.seq_len = seq_len
+#         self.mask_prob = mask_prob
         
-        print(f"MLMDataset: Loading and tokenizing data from file: {file_path}...")
-        can_df = _load_and_parse_log(file_path)
+#         print(f"MLMDataset: Loading and tokenizing data from file: {file_path}...")
+#         can_df = _load_and_parse_log(file_path)
         
-        if can_df.empty:
-            print(f"Warning: No data loaded from {file_path}. MLMDataset will be empty.")
-            self.token_id_stream = []
-        else:
-            # DataFrame을 토큰 리스트의 리스트로 변환 (Label 컬럼은 의도적으로 무시)
-            all_frames_as_tokens = []
-            for _, row in can_df.iterrows():
-                can_id_token = str(int(row['CAN_ID'], 16) + self.tokenizer.ID_OFFSET)
-                frame_tokens = [can_id_token] + row['Data']
-                all_frames_as_tokens.append(frame_tokens)
+#         if can_df.empty:
+#             print(f"Warning: No data loaded from {file_path}. MLMDataset will be empty.")
+#             self.token_id_stream = []
+#         else:
+#             # DataFrame을 토큰 리스트의 리스트로 변환 (Label 컬럼은 의도적으로 무시)
+#             all_frames_as_tokens = []
+#             for _, row in can_df.iterrows():
+#                 can_id_token = str(int(row['CAN_ID'], 16) + self.tokenizer.ID_OFFSET)
+#                 frame_tokens = [can_id_token] + row['Data']
+#                 all_frames_as_tokens.append(frame_tokens)
             
-            token_stream = list(chain.from_iterable(all_frames_as_tokens))
-            self.token_id_stream = self.tokenizer.encode(token_stream)
+#             token_stream = list(chain.from_iterable(all_frames_as_tokens))
+#             self.token_id_stream = self.tokenizer.encode(token_stream)
 
-        # 특수 토큰 ID 미리 저장
-        self.mask_token_id = tokenizer.token_to_id['<MASK>']
-        self.pad_token_id = tokenizer.token_to_id['<PAD>']
-        self.vocab_size = tokenizer.get_vocab_size()
-        self.special_token_ids = {tokenizer.token_to_id[token] for token in tokenizer.special_tokens}
+#         # 특수 토큰 ID 미리 저장
+#         self.mask_token_id = tokenizer.token_to_id['<MASK>']
+#         self.pad_token_id = tokenizer.token_to_id['<PAD>']
+#         self.vocab_size = tokenizer.get_vocab_size()
+#         self.special_token_ids = {tokenizer.token_to_id[token] for token in tokenizer.special_tokens}
         
-        print(f"MLMDataset: Init complete. Token stream length: {len(self.token_id_stream):,}")
+#         print(f"MLMDataset: Init complete. Token stream length: {len(self.token_id_stream):,}")
 
-    def __len__(self) -> int:
-        if not self.token_id_stream or len(self.token_id_stream) < self.seq_len:
-            return 0
-        return len(self.token_id_stream) - self.seq_len + 1
+#     def __len__(self) -> int:
+#         if not self.token_id_stream or len(self.token_id_stream) < self.seq_len:
+#             return 0
+#         return len(self.token_id_stream) - self.seq_len + 1
 
-    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        sequence = self.token_id_stream[idx : idx + self.seq_len]
-        input_ids = list(sequence)
-        labels = [-100] * self.seq_len
+#     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+#         sequence = self.token_id_stream[idx : idx + self.seq_len]
+#         input_ids = list(sequence)
+#         labels = [-100] * self.seq_len
 
-        candidate_indices = [i for i, token_id in enumerate(input_ids) if token_id not in self.special_token_ids]
-        num_to_mask = int(len(candidate_indices) * self.mask_prob)
-        if num_to_mask > 0:
-            masked_indices = random.sample(candidate_indices, num_to_mask)
-            for i in masked_indices:
-                labels[i] = input_ids[i]
-                rand = random.random()
-                if rand < 0.8:
-                    input_ids[i] = self.mask_token_id
-                elif rand < 0.9:
-                    random_token_id = random.randint(len(self.special_token_ids), self.vocab_size - 1)
-                    input_ids[i] = random_token_id
+#         candidate_indices = [i for i, token_id in enumerate(input_ids) if token_id not in self.special_token_ids]
+#         num_to_mask = int(len(candidate_indices) * self.mask_prob)
+#         if num_to_mask > 0:
+#             masked_indices = random.sample(candidate_indices, num_to_mask)
+#             for i in masked_indices:
+#                 labels[i] = input_ids[i]
+#                 rand = random.random()
+#                 if rand < 0.8:
+#                     input_ids[i] = self.mask_token_id
+#                 elif rand < 0.9:
+#                     random_token_id = random.randint(len(self.special_token_ids), self.vocab_size - 1)
+#                     input_ids[i] = random_token_id
         
-        attention_mask = [1] * self.seq_len
+#         attention_mask = [1] * self.seq_len
 
-        return {
-            'input_ids': torch.tensor(input_ids, dtype=torch.long),
-            'attention_mask': torch.tensor(attention_mask, dtype=torch.long),
-            'labels': torch.tensor(labels, dtype=torch.long)
-        }
+#         return {
+#             'input_ids': torch.tensor(input_ids, dtype=torch.long),
+#             'attention_mask': torch.tensor(attention_mask, dtype=torch.long),
+#             'labels': torch.tensor(labels, dtype=torch.long)
+#         }
 
 class ClassificationDataset(Dataset):
     """
