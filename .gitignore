@@ -281,3 +281,4 @@ conda-env/
 Pipfile
 Pipfile.lock
 git.md
+AGENTS.md
