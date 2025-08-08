@@ -117,7 +117,7 @@ class ClassificationDataset(Dataset):
     미세 조정(Fine-tuning) 및 지식 증류(Knowledge Distillation)를 위한 분류 데이터셋.
     CAN-MIRGU 보고서에 명시된 '공격(Attack)' 데이터 처리에 적합합니다.
     """
-    def __init__(self, file_path: str, tokenizer: CANTokenizer, seq_len: int):
+    def __init__(self, file_path: str, tokenizer: CANTokenizer, seq_len: int, stride: int = 1):
         self.tokenizer = tokenizer
         self.seq_len = seq_len
         self.sequences = []
@@ -141,7 +141,7 @@ class ClassificationDataset(Dataset):
             encoded_stream = self.tokenizer.encode(token_stream)
             
             # 슬라이딩 윈도우로 시퀀스와 레이블 생성
-            for i in range(len(encoded_stream) - seq_len + 1):
+            for i in range(len(encoded_stream) - seq_len + 1, stride):
                 self.sequences.append(encoded_stream[i : i + seq_len])
                 
                 # 시퀀스에 해당하는 원본 프레임의 레이블 범위를 계산
