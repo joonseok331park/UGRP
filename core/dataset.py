@@ -12,32 +12,16 @@ from torch.utils.data import Dataset
 from core.tokenizer import CANTokenizer
 
 def _load_and_parse_log(file_path: str) -> pd.DataFrame:
-    """
-    CAN-MIRGU 형식의 로그 파일을 읽고 파싱하여 DataFrame으로 변환하는 내부 헬퍼 함수.
-    (기존 utils.data_loader.load_can_data의 역할을 대체합니다)
-
-    :param file_path: .log 파일의 경로.
-    :return: 'CAN_ID', 'Data', 'Label' 컬럼을 가진 pandas DataFrame.
-    """
-    # 정규 표현식을 사용하여 로그 라인을 효율적으로 파싱합니다.
-    # 포맷: (timestamp) can0 CAN_ID#DATA LABEL
+    """[헬퍼 함수] 로그 파일을 읽어 DataFrame으로 변환합니다. (이제 Dataset 클래스에서는 직접 사용하지 않음)"""
     log_pattern = re.compile(r'\((?P<timestamp>\d+\.\d+)\)\s+can0\s+(?P<can_id>[0-9A-Fa-f]{3})#(?P<data>[0-9A-Fa-f]{0,16})\s+(?P<label>[01])')
-    
     parsed_data = []
     with open(file_path, 'r', encoding='utf-8') as f:
         for line in f:
             match = log_pattern.match(line)
             if match:
                 d = match.groupdict()
-                
-                # 데이터 페이로드를 8바이트(16진수 16글자)로 패딩합니다.
-                # Jo & Kim (2024)의 <VOID> 토큰 개념과 LSF-IDM (2023)의 '00' 패딩 개념을
-                # 실제 데이터 처리 로직으로 구현한 것입니다.
                 padded_data = d['data'].ljust(16, '0')
-                
-                # 2글자씩 잘라 8바이트 리스트로 만듭니다.
                 data_bytes = [padded_data[i:i+2] for i in range(0, 16, 2)]
-                
                 parsed_data.append({
                     'CAN_ID': d['can_id'],
                     'Data': data_bytes,
@@ -114,8 +98,8 @@ def _load_and_parse_log(file_path: str) -> pd.DataFrame:
 
 class ClassificationDataset(Dataset):
     """
-    미세 조정(Fine-tuning) 및 지식 증류(Knowledge Distillation)를 위한 분류 데이터셋.
-    CAN-MIRGU 보고서에 명시된 '공격(Attack)' 데이터 처리에 적합합니다.
+    [v2.2 수정] 메모리 효율성을 위해 Pandas DataFrame을 사용하지 않고
+    파일을 직접 스트리밍하여 시퀀스를 생성합니다.
     """
     def __init__(self, file_path: str, tokenizer: CANTokenizer, seq_len: int, stride: int = 1):
         self.tokenizer = tokenizer
@@ -123,34 +107,51 @@ class ClassificationDataset(Dataset):
         self.sequences = []
         self.labels = []
         
-        print(f"ClassificationDataset: Loading and preparing sequences from: {file_path}...")
-        can_df = _load_and_parse_log(file_path)
+        print(f"ClassificationDataset (v2.2): Loading and streaming from: {file_path}...")
         
-        if not can_df.empty:
-            all_frames_as_tokens = []
-            frame_labels = []
-            for _, row in can_df.iterrows():
-                can_id_token = str(int(row['CAN_ID'], 16) + self.tokenizer.ID_OFFSET)
-                frame_tokens = [can_id_token] + row['Data']
-                all_frames_as_tokens.append(frame_tokens)
-                frame_labels.append(row['Label'])
+        # 1. DataFrame 대신, 토큰 스트림을 직접 생성 (메모리 최적화)
+        all_frames_as_tokens = []
+        frame_labels = []
+        log_pattern = re.compile(r'\((?P<timestamp>\d+\.\d+)\)\s+can0\s+(?P<can_id>[0-9A-Fa-f]{3})#(?P<data>[0-9A-Fa-f]{0,16})\s+(?P<label>[01])')
+        
+        # tqdm을 사용하여 파일 읽기 진행 상황을 표시
+        with open(file_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
 
-            # 각 프레임은 9개의 토큰으로 구성됨
-            num_tokens_per_frame = 9
-            token_stream = list(chain.from_iterable(all_frames_as_tokens))
-            encoded_stream = self.tokenizer.encode(token_stream)
+        print("파일 파싱 및 토큰화 중...")
+        for line in tqdm(lines, desc="Parsing log file"):
+            match = log_pattern.match(line)
+            if match:
+                d = match.groupdict()
+                padded_data = d['data'].ljust(16, '0')
+                data_bytes = [padded_data[i:i+2] for i in range(0, 16, 2)]
+                
+                can_id_token = str(int(d['can_id'], 16) + self.tokenizer.ID_OFFSET)
+                frame_tokens = [can_id_token] + data_bytes
+                
+                all_frames_as_tokens.append(frame_tokens)
+                frame_labels.append(int(d['label']))
+
+        if not all_frames_as_tokens:
+            print(f"Warning: No valid data parsed from {file_path}. Dataset will be empty.")
+            return
+
+        # 2. 토큰 스트림 인코딩
+        print("토큰 스트림 인코딩 중...")
+        token_stream = list(chain.from_iterable(all_frames_as_tokens))
+        encoded_stream = self.tokenizer.encode(token_stream)
+        
+        # 3. 슬라이딩 윈도우로 시퀀스와 레이블 생성
+        print("시퀀스 생성 중...")
+        num_tokens_per_frame = 9
+        for i in tqdm(range(0, len(encoded_stream) - seq_len + 1, stride), desc="Generating sequences"):
+            self.sequences.append(encoded_stream[i : i + seq_len])
             
-            # 슬라이딩 윈도우로 시퀀스와 레이블 생성
-            for i in range(len(encoded_stream) - seq_len + 1, stride):
-                self.sequences.append(encoded_stream[i : i + seq_len])
-                
-                # 시퀀스에 해당하는 원본 프레임의 레이블 범위를 계산
-                start_frame_idx = i // num_tokens_per_frame
-                end_frame_idx = (i + seq_len -1) // num_tokens_per_frame + 1
-                
-                # 시퀀스 내에 공격 프레임이 하나라도 있으면 시퀀스의 레이블은 1(공격)
-                sequence_label = 1 if any(frame_labels[start_frame_idx:end_frame_idx]) else 0
-                self.labels.append(sequence_label)
+            start_frame_idx = i // num_tokens_per_frame
+            end_frame_idx = (i + seq_len - 1) // num_tokens_per_frame + 1
+            
+            sequence_label = 1 if any(frame_labels[start_frame_idx:end_frame_idx]) else 0
+            self.labels.append(sequence_label)
         
         print(f"ClassificationDataset: Init complete. Number of sequences: {len(self.sequences):,}")
 
