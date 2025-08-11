@@ -7,6 +7,7 @@ import pandas as pd
 from typing import List, Dict, Tuple
 from itertools import chain
 from torch.utils.data import Dataset
+from tqdm import tqdm
 
 # 이 파일은 같은 core 폴더 내의 tokenizer만 의존합니다.
 from core.tokenizer import CANTokenizer
@@ -114,23 +115,21 @@ class ClassificationDataset(Dataset):
         frame_labels = []
         log_pattern = re.compile(r'\((?P<timestamp>\d+\.\d+)\)\s+can0\s+(?P<can_id>[0-9A-Fa-f]{3})#(?P<data>[0-9A-Fa-f]{0,16})\s+(?P<label>[01])')
         
-        # tqdm을 사용하여 파일 읽기 진행 상황을 표시
-        with open(file_path, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
 
         print("파일 파싱 및 토큰화 중...")
-        for line in tqdm(lines, desc="Parsing log file"):
-            match = log_pattern.match(line)
-            if match:
-                d = match.groupdict()
-                padded_data = d['data'].ljust(16, '0')
-                data_bytes = [padded_data[i:i+2] for i in range(0, 16, 2)]
-                
-                can_id_token = str(int(d['can_id'], 16) + self.tokenizer.ID_OFFSET)
-                frame_tokens = [can_id_token] + data_bytes
-                
-                all_frames_as_tokens.append(frame_tokens)
-                frame_labels.append(int(d['label']))
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line in tqdm(f, desc="Parsing log file"):
+                match = log_pattern.match(line)
+                if match:
+                    d = match.groupdict()
+                    padded_data = d['data'].ljust(16, '0')
+                    data_bytes = [padded_data[i:i+2] for i in range(0, 16, 2)]
+                    
+                    can_id_token = str(int(d['can_id'], 16) + self.tokenizer.ID_OFFSET)
+                    frame_tokens = [can_id_token] + data_bytes
+                    
+                    all_frames_as_tokens.append(frame_tokens)
+                    frame_labels.append(int(d['label']))
 
         if not all_frames_as_tokens:
             print(f"Warning: No valid data parsed from {file_path}. Dataset will be empty.")

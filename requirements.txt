@@ -9,3 +9,4 @@ pandas
 scikit-learn
 tensorboard
 wandb # 실험 결과 추적을 위해 Weights & Biases 사용을 권장합니다.
+tqdm # 진행 상황 표시를 위해 tqdm 사용을 권장합니다.
