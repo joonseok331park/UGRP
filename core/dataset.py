@@ -8,6 +8,7 @@ from typing import List, Dict, Tuple
 from itertools import chain
 from torch.utils.data import Dataset
 from tqdm import tqdm
+import logging 
 
 # 이 파일은 같은 core 폴더 내의 tokenizer만 의존합니다.
 from core.tokenizer import CANTokenizer
@@ -113,15 +114,19 @@ class ClassificationDataset(Dataset):
         # 1. DataFrame 대신, 토큰 스트림을 직접 생성 (메모리 최적화)
         all_frames_as_tokens = []
         frame_labels = []
-        log_pattern = re.compile(r'\((?P<timestamp>\d+\.\d+)\)\s+can0\s+(?P<can_id>[0-9A-Fa-f]{3})#(?P<data>[0-9A-Fa-f]{0,16})\s+(?P<label>[01])')
+        # [수정] 공백 문자에 더 유연한 정규식으로 변경 (\s+ -> \s*)
+        log_pattern = re.compile(r'\((?P<timestamp>.*?)\)\s+can0\s+(?P<can_id>[0-9A-Fa-f]{3})#(?P<data>[0-9A-Fa-f]{0,16})\s*(?P<label>[01])?')
         
 
         print("파일 파싱 및 토큰화 중...")
+        parsed_count = 0 # [추가] 파싱 성공 카운터
         with open(file_path, 'r', encoding='utf-8') as f:
             for line in tqdm(f, desc="Parsing log file"):
-                match = log_pattern.match(line)
+                match = log_pattern.match(line.strip()) # [수정] 양 끝 공백 제거
                 if match:
                     d = match.groupdict()
+                    # Benign 데이터에는 Label이 없을 수 있으므로, 없으면 0으로 간주
+                    label = int(d.get('label') or 0)
                     padded_data = d['data'].ljust(16, '0')
                     data_bytes = [padded_data[i:i+2] for i in range(0, 16, 2)]
                     
@@ -130,6 +135,8 @@ class ClassificationDataset(Dataset):
                     
                     all_frames_as_tokens.append(frame_tokens)
                     frame_labels.append(int(d['label']))
+             # [추가] 파싱 결과 로깅
+            logging.info(f"총 {len(lines):,} 라인 중 {parsed_count:,} 개의 유효 CAN 프레임을 파싱했습니다.")
 
         if not all_frames_as_tokens:
             print(f"Warning: No valid data parsed from {file_path}. Dataset will be empty.")
