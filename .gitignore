@@ -283,3 +283,4 @@ Pipfile.lock
 git.md
 AGENTS.md
 myvenv/
+.kilocode/
