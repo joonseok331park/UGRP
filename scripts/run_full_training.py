@@ -66,7 +66,8 @@ def main(args):
     logging.info(f"데이터셋 분할 완료: 훈련 {len(train_dataset):,}개, 검증 {len(eval_dataset):,}개")
 
     data_collator = DataCollatorForLanguageModeling(
-        tokenizer=None,
+        # [수정] tokenizer=None -> tokenizer=tokenizer
+        tokenizer=tokenizer,
         mlm=True,
         mlm_probability=args.mask_prob,
     )

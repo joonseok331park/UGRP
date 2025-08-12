@@ -26,6 +26,9 @@ class CANTokenizer:
         self.special_tokens = ['<PAD>', '<UNK>', '<MASK>', '<VOID>']
         for token in self.special_tokens:
             self._add_token(token)
+        # [추가] DataCollator와의 호환성을 위한 속성 추가
+        self.mask_token_id = self.token_to_id['<MASK>']
+        self.pad_token_id = self.token_to_id['<PAD>']
 
     def _add_token(self, token: str) -> None:
         """어휘집에 토큰을 추가하는 보조 함수입니다."""
