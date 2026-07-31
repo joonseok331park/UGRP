@@ -1,4 +1,4 @@
-# core/dataset.py (의존성 제거 및 이중 클래스 구조 적용 최종 버전)
+# 초기 UGRP 프로토타입의 CAN 로그 데이터셋 구현
 
 import re
 import torch
@@ -15,11 +15,16 @@ from core.tokenizer import CANTokenizer
 
 def _load_and_parse_log(file_path: str) -> pd.DataFrame:
     """[헬퍼 함수] 로그 파일을 읽어 DataFrame으로 변환합니다. (이제 Dataset 클래스에서는 직접 사용하지 않음)"""
-    log_pattern = re.compile(r'\((?P<timestamp>\d+\.\d+)\)\s+can0\s+(?P<can_id>[0-9A-Fa-f]{3})#(?P<data>[0-9A-Fa-f]{0,16})\s+(?P<label>[01])')
+    log_pattern = re.compile(
+        r'\((?P<timestamp>\d+(?:\.\d+)?)\)\s+can0\s+'
+        r'(?P<can_id>[0-9A-Fa-f]{3})#'
+        r'(?P<data>(?:[0-9A-Fa-f]{2}){0,8})\s+'
+        r'(?P<label>[01])'
+    )
     parsed_data = []
     with open(file_path, 'r', encoding='utf-8') as f:
         for line in f:
-            match = log_pattern.match(line)
+            match = log_pattern.fullmatch(line.strip())
             if match:
                 d = match.groupdict()
                 padded_data = d['data'].ljust(16, '0')
@@ -100,8 +105,7 @@ def _load_and_parse_log(file_path: str) -> pd.DataFrame:
 
 class ClassificationDataset(Dataset):
     """
-    [v2.2 수정] 메모리 효율성을 위해 Pandas DataFrame을 사용하지 않고
-    파일을 직접 스트리밍하여 시퀀스를 생성합니다.
+    로그 파일을 순차적으로 읽어 분류용 시퀀스를 생성합니다.
     """
     def __init__(self, file_path: str, tokenizer: CANTokenizer, seq_len: int, stride: int = 1):
         self.tokenizer = tokenizer
@@ -109,34 +113,46 @@ class ClassificationDataset(Dataset):
         self.sequences = []
         self.labels = []
         
-        print(f"ClassificationDataset (v2.2): Loading and streaming from: {file_path}...")
+        print(f"ClassificationDataset: Loading and streaming from: {file_path}...")
         
-        # 1. DataFrame 대신, 토큰 스트림을 직접 생성 (메모리 최적화)
+        # 1. 파일에서 토큰 스트림을 직접 생성
         all_frames_as_tokens = []
         frame_labels = []
-        # [수정] 공백 문자에 더 유연한 정규식으로 변경 (\s+ -> \s*)
-        log_pattern = re.compile(r'\((?P<timestamp>.*?)\)\s+can0\s+(?P<can_id>[0-9A-Fa-f]{3})#(?P<data>[0-9A-Fa-f]{0,16})\s*(?P<label>[01])?')
+        # 레이블은 생략될 수 있으며, 공백은 선택적으로 허용합니다.
+        log_pattern = re.compile(
+            r'\((?P<timestamp>\d+(?:\.\d+)?)\)\s+can0\s+'
+            r'(?P<can_id>[0-9A-Fa-f]{3})#'
+            r'(?P<data>(?:[0-9A-Fa-f]{2}){0,8})'
+            r'(?:\s+(?P<label>[01]))?'
+        )
         
 
         print("파일 파싱 및 토큰화 중...")
-        parsed_count = 0 # [추가] 파싱 성공 카운터
+        total_count = 0
+        parsed_count = 0
         with open(file_path, 'r', encoding='utf-8') as f:
             for line in tqdm(f, desc="Parsing log file"):
-                match = log_pattern.match(line.strip()) # [수정] 양 끝 공백 제거
+                total_count += 1
+                match = log_pattern.fullmatch(line.strip())
                 if match:
                     d = match.groupdict()
                     # Benign 데이터에는 Label이 없을 수 있으므로, 없으면 0으로 간주
                     label = int(d.get('label') or 0)
                     padded_data = d['data'].ljust(16, '0')
                     data_bytes = [padded_data[i:i+2] for i in range(0, 16, 2)]
-                    
+
                     can_id_token = str(int(d['can_id'], 16) + self.tokenizer.ID_OFFSET)
                     frame_tokens = [can_id_token] + data_bytes
-                    
+
                     all_frames_as_tokens.append(frame_tokens)
-                    frame_labels.append(int(d['label']))
-             # [추가] 파싱 결과 로깅
-            logging.info(f"총 {len(lines):,} 라인 중 {parsed_count:,} 개의 유효 CAN 프레임을 파싱했습니다.")
+                    frame_labels.append(label)
+                    parsed_count += 1
+
+        logging.info(
+            "총 %s 라인 중 %s 개의 유효 CAN 프레임을 파싱했습니다.",
+            f"{total_count:,}",
+            f"{parsed_count:,}",
+        )
 
         if not all_frames_as_tokens:
             print(f"Warning: No valid data parsed from {file_path}. Dataset will be empty.")
@@ -183,8 +199,7 @@ if __name__ == '__main__':
     try:
         # 프로젝트 루트 디렉토리를 기준으로 상대 경로 설정
         project_root = Path(__file__).parent.parent 
-        # 실제 파일명을 정확히 알 수 없으므로, 일반적인 이름으로 가정합니다.
-        # 연구원님의 실제 파일명으로 이 부분을 수정해야 할 수 있습니다.
+        # 예시 파일명은 사용하는 데이터 구조에 맞게 조정해야 합니다.
         real_data_path = project_root / "data" / "raw" / "can_mirgu" / "Benign" / "Day_1" / "Benign_day1_file1.log"
         NUM_LINES_TO_TEST = 100000
 
