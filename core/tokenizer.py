@@ -1,5 +1,5 @@
-# [수정 사항] ID_OFFSET 값을 260에서 256으로 변경하여 Jo & Kim (2024) 논문과 완벽히 일치시켰습니다.
-# 이 외의 모든 로직은 설계 의도에 완벽하게 부합하여 그대로 유지합니다.
+# 초기 UGRP 프로토타입에서 사용한 CAN 메시지 토크나이저입니다.
+# CAN ID 토큰 범위와 바이트 값 범위를 분리하기 위해 ID_OFFSET을 256으로 둡니다.
 
 import json
 import pandas as pd
@@ -26,7 +26,7 @@ class CANTokenizer:
         self.special_tokens = ['<PAD>', '<UNK>', '<MASK>', '<VOID>']
         for token in self.special_tokens:
             self._add_token(token)
-        # [추가] DataCollator와의 호환성을 위한 속성 추가
+        # 자주 참조하는 특수 토큰 ID
         self.mask_token_id = self.token_to_id['<MASK>']
         self.pad_token_id = self.token_to_id['<PAD>']
 
@@ -109,7 +109,6 @@ class CANSequencer:
             data_bytes = row['Data']
             
             # 각 프레임은 9개의 토큰(ID 1개 + 데이터 바이트 8개)으로 구성됩니다.
-            # 이 'ID+Payload 통합 시퀀싱'은 Jo & Kim (2024)의 핵심 방법론입니다. [cite: 1751]
             frame_tokens = [can_id_token] + data_bytes
             all_tokens.append(frame_tokens)
 
@@ -131,8 +130,7 @@ class CANSequencer:
 
 
 if __name__ == '__main__':
-    # 이 테스트 코드는 파일의 독립적인 기능 검증을 위해 매우 유용합니다.
-    # 그대로 유지하여 향후 발생할 수 있는 문제를 사전에 방지하는 데 사용하겠습니다.
+    # 토크나이저와 시퀀서의 기본 동작을 확인하는 로컬 예시
     sample_data = {
         'CAN_ID': ['01A', '02B', '01A', '03C'],
         'Data': [

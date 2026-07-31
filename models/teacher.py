@@ -5,14 +5,13 @@ from transformers import BertConfig, BertForMaskedLM
 
 def get_teacher_config(vocab_size: int) -> BertConfig:
     """
-    specification.md에 명시된 교사 모델의 하이퍼파라미터를 기반으로
-    BertConfig 객체를 생성하여 반환합니다. 이 함수는 설계를 코드와 동기화하는
-    단일 진실 공급원(Single Source of Truth) 역할을 합니다.
+    초기 프로토타입에서 사용한 교사 모델 하이퍼파라미터로
+    BertConfig 객체를 생성합니다.
 
     :param vocab_size: 토크나이저의 전체 어휘집 크기.
     :return: 교사 모델의 아키텍처 설정이 담긴 BertConfig 객체.
     """
-    # Alkhatib et al. (2022) 논문의 Table II 및 specification.md 7.1. 명세 근거
+    # 초기 실험에서 사용한 CAN-BERT 교사 모델 설정
     teacher_hyperparams: Dict[str, Any] = {
         "vocab_size": vocab_size,
         "hidden_size": 256,
@@ -43,19 +42,17 @@ class CANBert(BertForMaskedLM):
     @classmethod
     def from_spec(cls, vocab_size: int) -> "CANBert":
         """
-        프로젝트 명세(specification.md)에 정의된 기본 설정으로
-        CANBert 모델 인스턴스를 생성하는 팩토리 메서드입니다.
+        이 모듈의 기본 설정으로 CANBert 모델 인스턴스를 생성합니다.
 
         :param vocab_size: 토크나이저의 어휘집 크기.
-        :return: 명세에 따라 초기화된 CANBert 모델 객체.
+        :return: 기본 설정으로 초기화된 CANBert 모델 객체.
         """
         config = get_teacher_config(vocab_size)
         return cls(config)
 
 if __name__ == '__main__':
     # --- 교사 모델(CAN-BERT) 아키텍처 검증 스크립트 ---
-    # 이 스크립트는 models/teacher.py가 specification.md의 요구사항과
-    # Alkhatib et al. (2022) 논문의 설계를 올바르게 반영하는지 검증합니다.
+    # 이 모듈의 기본 설정으로 모델을 생성하고 구조를 확인합니다.
 
     # 가상 어휘집 크기 (실제 훈련 시에는 core.tokenizer.py에서 로드)
     # Jo & Kim (2024)의 '오프셋 기반 통합 어휘집'에 따라 Payload(0-255),
@@ -64,10 +61,10 @@ if __name__ == '__main__':
 
     print("--- 교사 모델(CAN-BERT) 아키텍처 검증을 시작합니다. ---")
 
-    # 1. 명세서(specification.md) 기반 모델 생성
+    # 1. 모듈 기본 설정으로 모델 생성
     try:
         teacher_model = CANBert.from_spec(vocab_size=DUMMY_VOCAB_SIZE)
-        print("✅ [성공] 명세서 기반 모델 생성 완료.")
+        print("✅ [성공] 모델 생성 완료.")
     except Exception as e:
         print(f"❌ [실패] 모델 생성 중 오류 발생: {e}")
         exit()

@@ -24,7 +24,7 @@ def aggregate_can_logs(source_dir: Path, output_path: Path, dataset_name: str):
 
     if not log_files:
         logging.error(f"'{source_dir}'에서 .log 파일을 찾을 수 없습니다.")
-        logging.error("specification.md에 정의된 'data/raw/can_mirgu/' 구조를 확인해주십시오.")
+        logging.error("'data/raw/can_mirgu/' 디렉터리 구조를 확인해주십시오.")
         return
 
     logging.info(f"총 {len(log_files)}개의 '{dataset_name}' 로그 파일을 찾았습니다.")
@@ -50,7 +50,7 @@ def main():
     프로젝트 데이터 준비 스크립트의 메인 실행 함수.
     Benign 데이터와 Attack 데이터를 각각 별도의 파일로 병합합니다.
     """
-    # specification.md 5.1절에 명시된 프로젝트 디렉토리 구조를 따릅니다.
+    # 저장소 루트를 기준으로 한 데이터 디렉터리
     BASE_RAW_DIR = Path("data/raw/can_mirgu")
     PROCESSED_DIR = Path("data/processed")
 

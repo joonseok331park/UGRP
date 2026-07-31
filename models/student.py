@@ -6,7 +6,7 @@ from typing import Dict, Any, Tuple
 
 def get_student_hyperparams() -> Dict[str, Any]:
     """
-    specification.md 및 검토 보고서에 따라 확정된 학생 모델의 하이퍼파라미터를 반환합니다.
+    초기 프로토타입에서 사용한 학생 모델 하이퍼파라미터를 반환합니다.
     """
     # embedding_dim을 64로 조정하여 경량화 강화
     return {
