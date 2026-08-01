@@ -1,5 +1,7 @@
 # UGRP CAN IDS 연구 프로토타입
 
+> 이 저장소는 현재 유지보수되는 제품이 아니라 학부 연구 과정의 historical snapshot입니다. 정리된 public teacher-model prototype은 [`can-ids-bert`](https://github.com/joonseok331park/can-ids-bert)에서 확인할 수 있습니다. 이후 팀 연구에서 다룬 student model과 ONNX 산출물은 source–model parity와 재배포 권리 검토가 끝난 verified public release가 아니며, 이 저장소의 제공 범위에도 포함되지 않습니다. 이력과 팀 기여 기록을 보존하기 위해 읽기 전용으로 보관합니다.
+
 CAN 버스 로그를 토큰화하고 Transformer 교사 모델과 BiLSTM 학생 모델을 검토하기 위해 작성한 학부 연구 코드의 과거 스냅샷입니다. 구현이 완료된 제품이나 재현 패키지가 아니며, 현재 상태 그대로 실제 차량 또는 운영 환경에 배포할 수 없습니다.
 
 ## 저장소에 포함된 내용
